@@ -1,4 +1,9 @@
-import {BasketModel} from "../../../models/basket";
+import { BasketModel } from "../../../models/basket";
+import { User } from "../../../data/types";
+import { Request, Response, NextFunction } from "express";
+import * as models from "../../../models/index";
+import * as utils from "../../../lib/utils";
+import * as security from "../../../lib/insecurity";
 
 module.exports = function login () {
   function afterLogin (user: { data: User, bid: number }, res: Response, next: NextFunction) {
@@ -17,20 +22,29 @@ module.exports = function login () {
     if (req.body.email.match(/.*['-;].*/) || req.body.password.match(/.*['-;].*/)) {
       res.status(451).send(res.__('SQL Injection detected.'))
     }
-    models.sequelize.query(`SELECT * FROM Users WHERE email = '${req.body.email || ''}' AND password = '${security.hash(req.body.password || '')}' AND deletedAt IS NULL`, { model: models.User, plain: true })
-      .then((authenticatedUser) => {
-        const user = utils.queryResultToJson(authenticatedUser)
-        if (user.data?.id && user.data.totpSecret !== '') {
-          res.status(401).json({
-            status: 'totp_token_required',
-            data: {
-              tmpToken: security.authorize({
-                userId: user.data.id,
-                type: 'password_valid_needs_second_factor_token'
-              })
-            }
-          })
-        } else if (user.data?.id) {
+    models.sequelize.query(
+      'SELECT * FROM Users WHERE email = :email AND password = :password AND deletedAt IS NULL',
+      {
+        replacements: {
+          email: req.body.email || '',
+          password: security.hash(req.body.password || '')
+        },
+        model: models.User,
+        plain: true
+      }
+    ).then((authenticatedUser) => {
+      const user = utils.queryResultToJson(authenticatedUser)
+      if (user.data?.id && user.data.totpSecret !== '') {
+        res.status(401).json({
+          status: 'totp_token_required',
+          data: {
+            tmpToken: security.authorize({
+              userId: user.data.id,
+              type: 'password_valid_needs_second_factor_token'
+            })
+          }
+        })
+      } else if (user.data?.id) {
           afterLogin(user, res, next)
         } else {
           res.status(401).send(res.__('Invalid email or password.'))
