@@ -1,9 +1,9 @@
-import { BasketModel } from "../../models/basket";
 import { Request, Response, NextFunction } from 'express';
-import { User } from '../../models/user';
 import * as security from '../../lib/insecurity';
 import * as utils from '../../lib/utils';
 import * as models from '../../models/index';
+import { BasketModel } from "../../models/basket";
+import { User } from '../../models/user';
 
 module.exports = function login () {
   function afterLogin (user: { data: User, bid: number }, res: Response, next: NextFunction) {
