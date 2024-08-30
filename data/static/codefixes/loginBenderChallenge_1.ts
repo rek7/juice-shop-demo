@@ -17,6 +17,8 @@ module.exports = function login () {
     if (req.body.email.match(/.*['-;].*/) || req.body.password.match(/.*['-;].*/)) {
       res.status(451).send(res.__('SQL Injection detected.'))
     }
+    // Fix: Use parameterized query instead of string concatenation
+    // This prevents SQL injection by properly escaping user input
     models.sequelize.query('SELECT * FROM Users WHERE email = ? AND password = ? AND deletedAt IS NULL', 
       { 
         replacements: [req.body.email || '', security.hash(req.body.password || '')],
